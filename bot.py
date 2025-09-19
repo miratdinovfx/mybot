@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 import sqlite3
 
-API_TOKEN = "8041913948:AAF4B6imGN0_76qbFDExeMihgrhk-9Vq4vQ"
+API_TOKEN = "8041913948:AAFn4ujzHM1ovTNPnpOuguOV7mCnHGK0zGo"   # 🔴 Tokenni shu yerga qo‘y
 TELEGRAM_CHANNEL = "@Karauzak_school"
 INSTAGRAM_LINK = "https://instagram.com/karauzak_school"
 ADMIN_ID = 615739450  # faqat shu ID admin
@@ -50,8 +50,14 @@ def add_score(user_id, points):
     conn.close()
     return row
 
-# 🔴 0 ballga ega bo‘lganlarni olish emas, faqat score>0
-def get_leaderboard(limit=10):
+def reset_all_scores():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET score = 0")
+    conn.commit()
+    conn.close()
+
+def get_leaderboard(limit=1000):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -64,14 +70,7 @@ def get_leaderboard(limit=10):
     conn.close()
     return rows
 
-def reset_all_scores():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET score = 0")
-    conn.commit()
-    conn.close()
-
-# ----------------- Bot funksiyalari -----------------
+# ----------------- Bot buyruqlari -----------------
 @bot.message_handler(commands=['start'])
 def start(message):
     user = get_user(message.from_user.id)
@@ -89,7 +88,7 @@ def start(message):
     markup_inline.row(btn1, btn2)
     markup_inline.add(btn3)
     bot.send_message(message.chat.id,
-                     "Sálem!Sorawlarda qatnasıw ushın tómendegi kanallarģa aģza bolıń,soń ✅️ Tekseriw túymesin basıń.",
+                     "Sálem! Sorawlarda qatnasıw ushın tómendegi kanallarģa aģza bolıń, soń ✅️ Tekseriw túymesin basıń.",
                      reply_markup=markup_inline)
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
@@ -118,6 +117,7 @@ def get_name(message):
     markup.row("📊 Statistika")
     bot.send_message(message.chat.id, f"Raxmet, {full_name}! Endi menyudan paydalanıwıńız múmkin ✅", reply_markup=markup)
 
+# ----------------- Admin maxsus buyruqlar -----------------
 @bot.message_handler(commands=['reset'])
 def reset_scores(message):
     if message.from_user.id != ADMIN_ID:
@@ -126,6 +126,142 @@ def reset_scores(message):
     reset_all_scores()
     bot.reply_to(message, "✅ Barcha foydalanuvchilar ballari 0 ga tushirildi.")
 
+@bot.message_handler(commands=['addscore'])
+def addscore_cmd(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Bu buyruqni faqat admin ishlata oladi.")
+        return
+
+    parts = message.text.split()
+    if len(parts) < 3:
+        bot.reply_to(message, "ℹ️ Foydalanish: /addscore ID BALL\nMasalan: /addscore 123456789 5")
+        return
+
+    try:
+        target_id = int(parts[1])
+        points = int(parts[2])
+    except:
+        bot.reply_to(message, "❌ ID va BALL faqat son bo‘lishi kerak!")
+        return
+
+    row = add_score(target_id, points)
+    if not row:
+        bot.send_message(message.chat.id, f"❌ Foydalanuvchi topilmadi (ID: {target_id})")
+        return
+
+    full_name, new_score = row
+    msg = f"✅ {full_name} (🆔 {target_id}) ga {points:+d} ball qo‘shildi.\n📊 Yangi ball: {new_score}"
+    bot.send_message(message.chat.id, msg)
+
+    try:
+        bot.send_message(target_id, f"⭐ Sizning ballingiz {points:+d} ga o‘zgartirildi!\nHozirgi ball: {new_score}")
+    except:
+        pass
+
+@bot.message_handler(commands=['setscore'])
+def setscore_cmd(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Bu buyruqni faqat admin ishlata oladi.")
+        return
+
+    parts = message.text.split()
+    if len(parts) < 3:
+        bot.reply_to(message, "ℹ️ Foydalanish: /setscore ID BALL\nMasalan: /setscore 123456789 20")
+        return
+
+    try:
+        target_id = int(parts[1])
+        new_score = int(parts[2])
+    except:
+        bot.reply_to(message, "❌ ID va BALL faqat son bo‘lishi kerak!")
+        return
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET score=? WHERE user_id=?", (new_score, target_id))
+    conn.commit()
+    cursor.execute("SELECT full_name FROM users WHERE user_id=?", (target_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        bot.send_message(message.chat.id, f"❌ Foydalanuvchi topilmadi (ID: {target_id})")
+        return
+
+    full_name = row[0]
+    msg = f"✅ {full_name} (🆔 {target_id}) balli endi {new_score} ga o‘rnatildi."
+    bot.send_message(message.chat.id, msg)
+
+    try:
+        bot.send_message(target_id, f"⭐ Sizning ballingiz admin tomonidan {new_score} qilib o‘rnatildi.")
+    except:
+        pass
+
+@bot.message_handler(commands=['allusers'])
+def allusers_cmd(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Bu buyruqni faqat admin ishlata oladi.")
+        return
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, full_name, score FROM users ORDER BY score DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        bot.send_message(message.chat.id, "📭 Foydalanuvchilar bazasi bo‘sh.")
+        return
+
+    text = "📋 *Barcha foydalanuvchilar:*\n\n"
+    for uid, name, score in rows:
+        text += f"🆔 {uid}\n👤 {name}\n⭐ {score} ball\n\n"
+
+    max_len = 3500
+    for i in range(0, len(text), max_len):
+        bot.send_message(message.chat.id, text[i:i+max_len], parse_mode="Markdown")
+
+@bot.message_handler(commands=['setname'])
+def setname_cmd(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Bu buyruqni faqat admin ishlata oladi.")
+        return
+
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        bot.reply_to(message, "ℹ️ Foydalanish: /setname ID Yangi_Ism_Familiya\nMasalan: /setname 123456789 Ali Valiyev")
+        return
+
+    try:
+        target_id = int(parts[1])
+    except:
+        bot.reply_to(message, "❌ ID raqam bo‘lishi kerak!")
+        return
+
+    new_name = parts[2].strip()
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET full_name=? WHERE user_id=?", (new_name, target_id))
+    conn.commit()
+    cursor.execute("SELECT score FROM users WHERE user_id=?", (target_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        bot.send_message(message.chat.id, f"❌ Foydalanuvchi topilmadi (ID: {target_id})")
+        return
+
+    score = row[0]
+    msg = f"✅ Ism-familiya yangilandi!\n\n🆔 {target_id}\n👤 {new_name}\n⭐ {score} ball"
+    bot.send_message(message.chat.id, msg)
+
+    try:
+        bot.send_message(target_id, f"👤 Sizning ism-familiyangiz admin tomonidan o‘zgartirildi:\n\n{new_name}")
+    except:
+        pass
+
+# ----------------- Asosiy menyu -----------------
 @bot.message_handler(func=lambda msg: msg.text)
 def main_menu(message):
     user = get_user(message.from_user.id)
@@ -139,10 +275,12 @@ def main_menu(message):
     elif text == "📊 Statistika":
         leaderboard = get_leaderboard()
         if leaderboard:
-            text = "🏆 Top paydalanıwshılar:\n\n"
+            text = "🏆 *Top paydalanıwshılar:*\n\n"
+            medals = ["🥇", "🥈", "🥉"]
             for i, (name, score) in enumerate(leaderboard, 1):
-                text += f"{i}. {name} — {score} ball\n"
-            bot.send_message(message.chat.id, text)
+                medal = medals[i-1] if i <= 3 else "🔹"
+                text += f"{medal} {i}. {name} — {score} ball\n"
+            bot.send_message(message.chat.id, text, parse_mode="Markdown")
         else:
             bot.send_message(message.chat.id, "Házirshe balli paydalanıwshılar joq.")
     elif text == "👤 Juwap jiberiw":
@@ -154,11 +292,13 @@ def receive_answer(message):
     user = get_user(uid)
     full_name = user[0]
     answer = message.text if message.text else "<Matn bo'lmagan kontent>"
+
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.row(
         types.InlineKeyboardButton("✅ Durıs", callback_data=f"check_{uid}_1"),
         types.InlineKeyboardButton("❌ Nadurıs", callback_data=f"check_{uid}_0")
     )
+
     admin_msg = f"👆 Jańa juwap!!\nIsm: {full_name}\nUser ID: {uid}\nJuwap:\n{answer}"
     bot.send_message(ADMIN_ID, admin_msg, reply_markup=admin_markup)
     bot.send_message(message.chat.id, f"✅ Juwabıńız qabıllandı, {full_name}! Admin tekseredi")
@@ -175,14 +315,14 @@ def handle_check(c):
     status_text = "✅ Durıs" if points == 1 else "❌ Nadurıs"
     updated_text = f"{c.message.text}\n\n➡ Admin tekseredi: {status_text}"
     bot.edit_message_text(chat_id=c.message.chat.id, message_id=c.message.message_id, text=updated_text)
-    bot.answer_callback_query(c.id, f"✅ Juwap tekserildi. Jańa ball.: {new_score}")
+    bot.answer_callback_query(c.id, f"✅ Juwap tekserildi. Jańa ball: {new_score}")
     msg = "🎉 Juwabıńız durıs! Sizge 1 ball qosıldı." if points == 1 else "❌ Juwabıńız nadurıs. Sizge ball qosılmadı."
     try:
         bot.send_message(target_id, msg)
-    except Exception:
+    except:
         pass
 
-# ----------------- Ishga tushirish -----------------
+# ----------------- Botni ishga tushirish -----------------
 if __name__ == "__main__":
     init_db()
     print("Bot ishga tushdi...")
