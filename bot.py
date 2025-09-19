@@ -1,5 +1,6 @@
 import telebot
 from telebot import types
+from flask import Flask, request
 import sqlite3
 
 API_TOKEN = "8041913948:AAFn4ujzHM1ovTNPnpOuguOV7mCnHGK0zGo"   # 🔴 Tokenni shu yerga qo‘y
@@ -8,6 +9,7 @@ INSTAGRAM_LINK = "https://instagram.com/karauzak_school"
 ADMIN_ID = 615739450  # faqat shu ID admin
 
 bot = telebot.TeleBot(API_TOKEN)
+app = Flask(__name__)
 DB_FILE = "bot_data.db"
 
 # ----------------- Database funksiyalari -----------------
@@ -322,8 +324,19 @@ def handle_check(c):
     except:
         pass
 
+# ----------------- Webhook qismi -----------------
+@app.route(f"/{API_TOKEN}", methods=["POST"])
+def webhook():
+    json_str = request.get_data().decode("UTF-8")
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
+
+@app.route("/")
+def home():
+    return "Bot ishlayapti ✅", 200
+
 # ----------------- Botni ishga tushirish -----------------
 if __name__ == "__main__":
     init_db()
-    print("Bot ishga tushdi...")
-    bot.infinity_polling(skip_pending=True)
+    print("Bot ishga tushdi (webhook rejimi)...")
