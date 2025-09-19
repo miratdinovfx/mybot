@@ -64,19 +64,19 @@ def start(message):
     user = get_user(message.from_user.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     if user:
-        markup.row("👤 Javob yuborish", "👤 Profilim")
-        markup.row("📊 Statistikalar")
-        bot.send_message(message.chat.id, f"Salom, {user[0]}! Menyu orqali davom etishingiz mumkin ✅", reply_markup=markup)
+        markup.row("👤 Juwap jiberiw", "👤 Profilim")
+        markup.row("📊 Statistika")
+        bot.send_message(message.chat.id, f"Sálem, {user[0]}! Menyu arqalı dawam etiwińiz múmkin ✅", reply_markup=markup)
         return
 
     markup_inline = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton("📩 Telegram kanal", url=f"https://t.me/{TELEGRAM_CHANNEL.strip('@')}")
     btn2 = types.InlineKeyboardButton("📷 Instagram sahifa", url=INSTAGRAM_LINK)
-    btn3 = types.InlineKeyboardButton("✅ Tekshirish", callback_data="check_subscription")
+    btn3 = types.InlineKeyboardButton("✅ Tekseriw", callback_data="check_subscription")
     markup_inline.row(btn1, btn2)
     markup_inline.add(btn3)
     bot.send_message(message.chat.id,
-                     "Salom! Savollarda qatnashish uchun quyidagi kanallarga obuna bo'ling, keyin ✅ Tekshirish tugmasini bosing.",
+                     "Sálem!Sorawlarda qatnasıw ushın tómendegi kanallarģa aģza bolıń,soń ✅️ Tekseriw túymesin basıń.",
                      reply_markup=markup_inline)
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
@@ -86,46 +86,46 @@ def check_subscription(call):
         status = bot.get_chat_member(TELEGRAM_CHANNEL, call.from_user.id)
         if status.status in ["member", "administrator", "creator"]:
             bot.send_message(call.from_user.id,
-                             "✅ Obuna tasdiqlandi! Iltimos, ismingiz va familiyangizni yozib yuboring.")
+                             "✅ Jazılıw qabıllandı! Iltimas, atıńız hám familiyańızdı jazıp jiberiń.")
             bot.register_next_step_handler_by_chat_id(call.from_user.id, get_name)
         else:
-            bot.send_message(call.from_user.id, "❌ Siz hali Telegram kanalga obuna bo'lmagansiz!")
+            bot.send_message(call.from_user.id, "❌ Siz ele Telegram kanalģa aģza bolmaģansız!")
     except Exception as e:
-        bot.send_message(call.from_user.id, f"Xatolik: {e}")
+        bot.send_message(call.from_user.id, f"Qátelik: {e}")
 
 def get_name(message):
     if not message.text:
-        bot.send_message(message.chat.id, "Iltimos, matn shaklida ismingiz va familiyangizni yuboring.")
+        bot.send_message(message.chat.id, "Iltimas, tekst kórinisinde atıńız hám familiyańızdı jiberiń")
         bot.register_next_step_handler(message, get_name)
         return
     full_name = message.text.strip()
     add_or_update_user(message.from_user.id, full_name)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.row("👤 Javob yuborish", "👤 Profilim")
-    markup.row("📊 Statistikalar")
-    bot.send_message(message.chat.id, f"Rahmat, {full_name}! Endi menyudan foydalanishingiz mumkin ✅", reply_markup=markup)
+    markup.row("👤 Juwap jiberiw", "👤 Profilim")
+    markup.row("📊 Statistika")
+    bot.send_message(message.chat.id, f"Raxmet, {full_name}! Endi menyudan paydalanıwıńız múmkin ✅", reply_markup=markup)
 
 @bot.message_handler(func=lambda msg: msg.text)
 def main_menu(message):
     user = get_user(message.from_user.id)
     if not user:
-        bot.send_message(message.chat.id, "Iltimos, avval ism yuboring.")
+        bot.send_message(message.chat.id, "Iltimas, aldın atıńızdı jiberiń.")
         bot.register_next_step_handler_by_chat_id(message.from_user.id, get_name)
         return
     text = message.text
     if text == "👤 Profilim":
-        bot.send_message(message.chat.id, f"👤 Ism: {user[0]}\n⭐ Ballar: {user[1]}")
-    elif text == "📊 Statistikalar":
+        bot.send_message(message.chat.id, f"👤 Atıńız: {user[0]}\n⭐ Ballar: {user[1]}")
+    elif text == "📊 Statistika":
         leaderboard = get_leaderboard()
         if leaderboard:
-            text = "🏆 Top foydalanuvchilar:\n\n"
+            text = "🏆 Top paydalanıwshılar:\n\n"
             for i, (name, score) in enumerate(leaderboard, 1):
                 text += f"{i}. {name} — {score} ball\n"
             bot.send_message(message.chat.id, text)
         else:
-            bot.send_message(message.chat.id, "Hozircha foydalanuvchi ma'lumotlari yo'q.")
-    elif text == "👤 Javob yuborish":
-        bot.send_message(message.chat.id, "Savolga javobingizni yuboring:")
+            bot.send_message(message.chat.id, "Házirshe paydalanıwshı maģlıwmatları joq.")
+    elif text == "👤 Juwap jiberiw":
+        bot.send_message(message.chat.id, "Sorawģa juwabıńızdı jiberiń:")
         bot.register_next_step_handler(message, receive_answer)
 
 def receive_answer(message):
@@ -135,12 +135,12 @@ def receive_answer(message):
     answer = message.text if message.text else "<Matn bo'lmagan kontent>"
     admin_markup = types.InlineKeyboardMarkup()
     admin_markup.row(
-        types.InlineKeyboardButton("✅ To'g'ri", callback_data=f"check_{uid}_1"),
-        types.InlineKeyboardButton("❌ Notog'ri", callback_data=f"check_{uid}_0")
+        types.InlineKeyboardButton("✅ Durıs", callback_data=f"check_{uid}_1"),
+        types.InlineKeyboardButton("❌ Nadurıs", callback_data=f"check_{uid}_0")
     )
-    admin_msg = f"👆 Yangi javob!\nIsm: {full_name}\nUser ID: {uid}\nJavob:\n{answer}"
+    admin_msg = f"👆 Jańa juwap!!\nIsm: {full_name}\nUser ID: {uid}\nJuwap:\n{answer}"
     bot.send_message(ADMIN_ID, admin_msg, reply_markup=admin_markup)
-    bot.send_message(message.chat.id, f"✅ Javobingiz qabul qilindi, {full_name}! Admin tekshiradi.")
+    bot.send_message(message.chat.id, f"✅ Juwabıńız qabıllandı, {full_name}! Admin tekseredi")
 
 # ----------------- Admin To'g'ri/Notog'ri -----------------
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("check_"))
@@ -149,14 +149,14 @@ def handle_check(c):
     target_id = int(parts[1])
     points = int(parts[2])
     if c.from_user.id != ADMIN_ID:
-        bot.answer_callback_query(c.id, "❌ Bu amaliyotni faqat admin bajara oladi.", show_alert=True)
+        bot.answer_callback_query(c.id, "❌ Bul ámeliyattı tek admin isley aladı.", show_alert=True)
         return
     full_name, new_score = add_score(target_id, points)
-    status_text = "✅ To'g'ri" if points == 1 else "❌ Notog'ri"
-    updated_text = f"{c.message.text}\n\n➡ Admin tekshirdi: {status_text}"
+    status_text = "✅ Durıs" if points == 1 else "❌ Nadurıs"
+    updated_text = f"{c.message.text}\n\n➡ Admin tekseredi: {status_text}"
     bot.edit_message_text(chat_id=c.message.chat.id, message_id=c.message.message_id, text=updated_text)
-    bot.answer_callback_query(c.id, f"✅ Javob tekshirildi. Yangi ball: {new_score}")
-    msg = "🎉 Javobingiz to‘g‘ri! Sizga 1 ball qo‘shildi." if points == 1 else "❌ Javobingiz noto‘g‘ri. Sizga ball qo‘shilmadi."
+    bot.answer_callback_query(c.id, f"✅ JJuwap tekserildi. Jańa ball.: {new_score}")
+    msg = "🎉 Juwabıńız durıs! Sizge 1 ball qosıldı." if points == 1 else "❌ Juwabıńız nadurıs. Sizge ball qosılmadı."
     try:
         bot.send_message(target_id, msg)
     except Exception:
@@ -167,3 +167,4 @@ if __name__ == "__main__":
     init_db()
     print("Bot ishga tushdi...")
     bot.infinity_polling(skip_pending=True)
+
