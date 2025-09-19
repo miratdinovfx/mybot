@@ -5,7 +5,7 @@ import sqlite3
 API_TOKEN = "8041913948:AAF4B6imGN0_76qbFDExeMihgrhk-9Vq4vQ"
 TELEGRAM_CHANNEL = "@Karauzak_school"
 INSTAGRAM_LINK = "https://instagram.com/karauzak_school"
-ADMIN_ID = 615739450
+ADMIN_ID = 615739450  # faqat shu ID admin
 
 bot = telebot.TeleBot(API_TOKEN)
 DB_FILE = "bot_data.db"
@@ -50,19 +50,24 @@ def add_score(user_id, points):
     conn.close()
     return row
 
+# 🔴 0 ballga ega bo‘lganlarni olish emas, faqat score>0
 def get_leaderboard(limit=10):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("SELECT full_name, score FROM users ORDER BY score DESC LIMIT ?", (limit,))
+    cursor.execute("""
+        SELECT full_name, score 
+        FROM users 
+        WHERE score > 0 
+        ORDER BY score DESC LIMIT ?
+    """, (limit,))
     rows = cursor.fetchall()
     conn.close()
     return rows
 
-# --- Yangi qo'shilgan funksiya: Ballarni reset qilish ---
-def reset_scores():
+def reset_all_scores():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET score = 0")  # Hamma foydalanuvchilarning score ni 0 qilamiz
+    cursor.execute("UPDATE users SET score = 0")
     conn.commit()
     conn.close()
 
@@ -84,7 +89,7 @@ def start(message):
     markup_inline.row(btn1, btn2)
     markup_inline.add(btn3)
     bot.send_message(message.chat.id,
-                     "Sálem! Sorawlarda qatnasıw ushın tómendegi kanallarģa aģza bolıń, soń ✅️ Tekseriw túymesin basıń.",
+                     "Sálem!Sorawlarda qatnasıw ushın tómendegi kanallarģa aģza bolıń,soń ✅️ Tekseriw túymesin basıń.",
                      reply_markup=markup_inline)
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
@@ -113,6 +118,14 @@ def get_name(message):
     markup.row("📊 Statistika")
     bot.send_message(message.chat.id, f"Raxmet, {full_name}! Endi menyudan paydalanıwıńız múmkin ✅", reply_markup=markup)
 
+@bot.message_handler(commands=['reset'])
+def reset_scores(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Bu buyruqni faqat admin ishlata oladi.")
+        return
+    reset_all_scores()
+    bot.reply_to(message, "✅ Barcha foydalanuvchilar ballari 0 ga tushirildi.")
+
 @bot.message_handler(func=lambda msg: msg.text)
 def main_menu(message):
     user = get_user(message.from_user.id)
@@ -131,7 +144,7 @@ def main_menu(message):
                 text += f"{i}. {name} — {score} ball\n"
             bot.send_message(message.chat.id, text)
         else:
-            bot.send_message(message.chat.id, "Házirshe paydalanıwshı maģlıwmatları joq.")
+            bot.send_message(message.chat.id, "Házirshe balli paydalanıwshılar joq.")
     elif text == "👤 Juwap jiberiw":
         bot.send_message(message.chat.id, "Sorawģa juwabıńızdı jiberiń:")
         bot.register_next_step_handler(message, receive_answer)
@@ -150,7 +163,6 @@ def receive_answer(message):
     bot.send_message(ADMIN_ID, admin_msg, reply_markup=admin_markup)
     bot.send_message(message.chat.id, f"✅ Juwabıńız qabıllandı, {full_name}! Admin tekseredi")
 
-# ----------------- Admin To'g'ri/Notog'ri -----------------
 @bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("check_"))
 def handle_check(c):
     parts = c.data.split("_")
@@ -163,21 +175,12 @@ def handle_check(c):
     status_text = "✅ Durıs" if points == 1 else "❌ Nadurıs"
     updated_text = f"{c.message.text}\n\n➡ Admin tekseredi: {status_text}"
     bot.edit_message_text(chat_id=c.message.chat.id, message_id=c.message.message_id, text=updated_text)
-    bot.answer_callback_query(c.id, f"✅ JJuwap tekserildi. Jańa ball.: {new_score}")
+    bot.answer_callback_query(c.id, f"✅ Juwap tekserildi. Jańa ball.: {new_score}")
     msg = "🎉 Juwabıńız durıs! Sizge 1 ball qosıldı." if points == 1 else "❌ Juwabıńız nadurıs. Sizge ball qosılmadı."
     try:
         bot.send_message(target_id, msg)
     except Exception:
         pass
-
-# --- Admin uchun /reset komandasi ---
-@bot.message_handler(commands=['reset'])
-def reset_command(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "❌ Bu komandani faqat admin ishlata oladi.")
-        return
-    reset_scores()
-    bot.reply_to(message, "✅ Hamma foydalanuvchilarning ballari 0 ga tushirildi.")
 
 # ----------------- Ishga tushirish -----------------
 if __name__ == "__main__":
