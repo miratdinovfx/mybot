@@ -58,6 +58,14 @@ def get_leaderboard(limit=10):
     conn.close()
     return rows
 
+# --- Yangi qo'shilgan funksiya: Ballarni reset qilish ---
+def reset_scores():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET score = 0")  # Hamma foydalanuvchilarning score ni 0 qilamiz
+    conn.commit()
+    conn.close()
+
 # ----------------- Bot funksiyalari -----------------
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -76,7 +84,7 @@ def start(message):
     markup_inline.row(btn1, btn2)
     markup_inline.add(btn3)
     bot.send_message(message.chat.id,
-                     "Sálem!Sorawlarda qatnasıw ushın tómendegi kanallarģa aģza bolıń,soń ✅️ Tekseriw túymesin basıń.",
+                     "Sálem! Sorawlarda qatnasıw ushın tómendegi kanallarģa aģza bolıń, soń ✅️ Tekseriw túymesin basıń.",
                      reply_markup=markup_inline)
 
 @bot.callback_query_handler(func=lambda call: call.data == "check_subscription")
@@ -162,9 +170,17 @@ def handle_check(c):
     except Exception:
         pass
 
+# --- Admin uchun /reset komandasi ---
+@bot.message_handler(commands=['reset'])
+def reset_command(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Bu komandani faqat admin ishlata oladi.")
+        return
+    reset_scores()
+    bot.reply_to(message, "✅ Hamma foydalanuvchilarning ballari 0 ga tushirildi.")
+
 # ----------------- Ishga tushirish -----------------
 if __name__ == "__main__":
     init_db()
     print("Bot ishga tushdi...")
     bot.infinity_polling(skip_pending=True)
-
